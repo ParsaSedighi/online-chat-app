@@ -1,0 +1,175 @@
+// src/app/admin/users/page.tsx
+
+'use client';
+
+import { useEffect, useState, useCallback } from "react";
+import { authClient } from "@/lib/auth-client";
+import type { UserWithRole } from "better-auth/plugins";
+import { Loader2, Pencil } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
+// TODO: fix this mess
+type SettableRole = "user" | "admin" | "GroupAdmin";
+
+export default function AdminUsersPage() {
+    const [users, setUsers] = useState<UserWithRole[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+    const [selectedRole, setSelectedRole] = useState<SettableRole>('user');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const fetchUsers = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await authClient.admin.listUsers({ query: { limit: 100 } });
+            if (response.data) {
+                setUsers(response.data.users);
+            } else if (response.error) {
+                throw new Error(response.error.message);
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to fetch users.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    const handleEditClick = (user: UserWithRole) => {
+        setSelectedUser(user);
+        setSelectedRole((user.role as SettableRole) || 'user');
+        setIsDialogOpen(true);
+    };
+
+    const handleRoleChange = async () => {
+        if (!selectedUser) return;
+        setIsUpdating(true);
+        setError(null);
+
+        const { data, error } = await authClient.admin.setRole({
+            userId: selectedUser.id,
+            role: selectedRole as any,
+        });
+
+        if (error) {
+            setError(error.message || "An unexpected error occurred while setting the role.");
+        } else {
+            setIsDialogOpen(false);
+            await fetchUsers();
+        }
+        setIsUpdating(false);
+    };
+
+    // ... (rest of the component is the same)
+    if (loading && users.length === 0) {
+        return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    return (
+        <div className="container mx-auto py-10">
+            <Card>
+                <CardHeader>
+                    <CardTitle>User Management</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableCaption>A list of all users in the system.</TableCaption>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {users.map((user) => (
+                                <TableRow key={user.id}>
+                                    <TableCell className="font-medium">{user.name}</TableCell>
+                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell>{user.role}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="icon" onClick={() => handleEditClick(user)}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Role for {selectedUser?.name}</DialogTitle>
+                        <DialogDescription>
+                            Select a new role for this user. Click save when you're done.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="role-select" className="text-right">Role</Label>
+                            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as SettableRole)}>
+                                <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="admin">Admin (Super Admin)</SelectItem>
+                                    <SelectItem value="GroupAdmin">Group Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {error && <p className="text-sm font-medium text-destructive col-span-4">{error}</p>}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleRoleChange} disabled={isUpdating}>
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}

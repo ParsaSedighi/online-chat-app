@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@/lib/prisma";
 import { admin } from "better-auth/plugins";
+import { ac, roles } from "@/lib/permissions";
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
@@ -13,7 +14,11 @@ export const auth = betterAuth({
         autoSignIn: true,
     },
     plugins: [
-        admin()
+        admin({
+            adminUserIds: ["O5Oxh29e0pUWkWnNmR6PWNvubXrWoGWD"], // Temprory
+            ac,
+            roles
+        })
     ]
     // socialProviders: {
     //     github: {
