@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { redirect } from "next/navigation";
 
 export default function SignOut() {
     const onClickHandler = async () => {
@@ -9,9 +10,10 @@ export default function SignOut() {
             fetchOptions: {
                 onSuccess: () => {
                     console.log('👍')
+                    redirect('/')
                 },
                 onError: () => {
-                    console.log('👎:' + 'idiot')
+                    console.log('👎: SignOut error')
                 }
             },
         });

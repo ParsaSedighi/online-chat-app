@@ -1,43 +1,18 @@
-// src/app/admin/users/page.tsx
-
 'use client';
 
 import { useEffect, useState, useCallback } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { UserWithRole } from "better-auth/plugins";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-    DialogClose,
-} from "@/components/ui/dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { CreateUserForm } from "@/components/CreateUserForm";
 
-// TODO: fix this mess
 type SettableRole = "user" | "admin" | "GroupAdmin";
 
 export default function AdminUsersPage() {
@@ -45,13 +20,16 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    // State for the "Edit Role" dialog
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
     const [selectedRole, setSelectedRole] = useState<SettableRole>('user');
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // State for the "Create User" dialog
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
     const fetchUsers = useCallback(async () => {
-        setLoading(true);
         try {
             const response = await authClient.admin.listUsers({ query: { limit: 100 } });
             if (response.data) {
@@ -73,7 +51,7 @@ export default function AdminUsersPage() {
     const handleEditClick = (user: UserWithRole) => {
         setSelectedUser(user);
         setSelectedRole((user.role as SettableRole) || 'user');
-        setIsDialogOpen(true);
+        setIsEditDialogOpen(true);
     };
 
     const handleRoleChange = async () => {
@@ -81,30 +59,89 @@ export default function AdminUsersPage() {
         setIsUpdating(true);
         setError(null);
 
-        const { data, error } = await authClient.admin.setRole({
+        const { error } = await authClient.admin.setRole({
             userId: selectedUser.id,
             role: selectedRole as any,
         });
 
         if (error) {
-            setError(error.message || "An unexpected error occurred while setting the role.");
+            setError(error!.message!);
         } else {
-            setIsDialogOpen(false);
+            setIsEditDialogOpen(false);
             await fetchUsers();
         }
         setIsUpdating(false);
     };
 
-    // ... (rest of the component is the same)
     if (loading && users.length === 0) {
         return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
     return (
         <div className="container mx-auto py-10">
+            {/* Create User Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Create New User</DialogTitle>
+                        <DialogDescription>
+                            Fill out the form below to create a new user account.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <CreateUserForm
+                        onSuccess={() => {
+                            setIsCreateDialogOpen(false);
+                            fetchUsers(); // Refresh the user list
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Role Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Role for {selectedUser?.name}</DialogTitle>
+                        <DialogDescription>
+                            Select a new role for this user. Click save when you're done.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="role-select" className="text-right">Role</Label>
+                            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as SettableRole)}>
+                                <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="admin">Admin (Super Admin)</SelectItem>
+                                    <SelectItem value="GroupAdmin">Group Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {error && <p className="text-sm font-medium text-destructive col-span-4">{error}</p>}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <Button onClick={handleRoleChange} disabled={isUpdating}>
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Main Content Card */}
             <Card>
-                <CardHeader>
-                    <CardTitle>User Management</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>User Management</CardTitle>
+                        <CardDescription>View and manage all users in the system.</CardDescription>
+                    </div>
+                    <Button onClick={() => setIsCreateDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Create User
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -134,42 +171,6 @@ export default function AdminUsersPage() {
                     </Table>
                 </CardContent>
             </Card>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Role for {selectedUser?.name}</DialogTitle>
-                        <DialogDescription>
-                            Select a new role for this user. Click save when you're done.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="role-select" className="text-right">Role</Label>
-                            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as SettableRole)}>
-                                <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="admin">Admin (Super Admin)</SelectItem>
-                                    <SelectItem value="GroupAdmin">Group Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        {error && <p className="text-sm font-medium text-destructive col-span-4">{error}</p>}
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={handleRoleChange} disabled={isUpdating}>
-                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Changes
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
