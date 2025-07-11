@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -9,6 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Better-Auth models
 model User {
   id            String    @id
   name          String
@@ -25,7 +25,10 @@ model User {
   banReason  String?
   banExpires DateTime?
 
-  @@unique([email])
+  ownedGroups      Group[]       @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  sentMessages     Message[]     @relation("SentMessages")
+
   @@map("user")
 }
 
@@ -42,7 +45,6 @@ model Session {
 
   impersonatedBy String?
 
-  @@unique([token])
   @@map("session")
 }
 
@@ -74,4 +76,42 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+// Chat-App models
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("GroupOwner", fields: [ownerId], references: [id])
+
+  members  GroupMember[]
+  messages Message[]
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  authorId String
+  author   User   @relation("SentMessages", fields: [authorId], references: [id])
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
