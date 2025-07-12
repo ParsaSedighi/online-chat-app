@@ -8,7 +8,7 @@ interface ChatPageProps {
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // Fetch initial data on the server
     const group = await prisma.group.findUnique({
