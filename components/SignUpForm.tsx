@@ -35,8 +35,7 @@ export function SignUpForm() {
             onRequest: () => setLoading(true),
             onSuccess: () => {
                 setLoading(false);
-                // Redirect user to the dashboard or a "check your email" page
-                window.location.href = '/dashboard';
+                window.location.href = '/';
             },
             onError: (ctx) => {
                 setLoading(false);

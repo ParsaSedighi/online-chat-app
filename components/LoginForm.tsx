@@ -35,12 +35,10 @@ export function LoginForm() {
             },
             onSuccess: (ctx) => {
                 setLoading(false);
-                // On successful login, redirect to a protected page
-                window.location.href = '/admin/users'; // Or any other dashboard page
+                window.location.href = '/groups';
             },
             onError: (ctx) => {
                 setLoading(false);
-                // Display the error message from the server
                 setError(ctx.error.message);
             },
         });

@@ -7,6 +7,9 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import Link from 'next/link';
+import { Settings } from 'lucide-react';
+
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem } from './ui/form';
@@ -73,8 +76,13 @@ export function ChatRoom({ group, initialMessages }: ChatRoomProps) {
 
     return (
         <div className="flex flex-col h-screen">
-            <header className="p-4 border-b bg-background sticky top-0">
+            <header className="p-4 border-b bg-background sticky top-0 flex justify-between items-center">
                 <h1 className="text-xl font-bold">{group.name}</h1>
+                <Button variant="outline" size="icon" asChild>
+                    <Link href={`/groups/${group.id}/manage`}>
+                        <Settings className="h-4 w-4" />
+                    </Link>
+                </Button>
             </header>
 
             <main className="flex-1 overflow-y-auto p-4 space-y-4">
