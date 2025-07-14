@@ -3,6 +3,8 @@ import { AddMemberForm } from "@/components/AddMemberForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { DeleteGroupButton } from "@/components/DeleteGroupButton";
+import { Separator } from "@/components/ui/separator";
 
 interface ManageGroupPageProps {
     params: {
@@ -42,7 +44,7 @@ export default async function ManageGroupPage({ params }: ManageGroupPageProps) 
     });
 
     return (
-        <main className="container mx-auto py-10">
+        <main className="container mx-auto py-10 space-y-8">
             <Card>
                 <CardHeader>
                     <CardTitle>Manage Group: {group.name}</CardTitle>
@@ -50,6 +52,18 @@ export default async function ManageGroupPage({ params }: ManageGroupPageProps) 
                 </CardHeader>
                 <CardContent>
                     <AddMemberForm groupId={group.id} potentialMembers={potentialMembers} />
+                </CardContent>
+            </Card>
+            <Separator />
+            <Card className="border-destructive">
+                <CardHeader>
+                    <CardTitle>Danger Zone</CardTitle>
+                    <CardDescription>
+                        Deleting the group is a permanent action that cannot be undone.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <DeleteGroupButton groupId={group.id} />
                 </CardContent>
             </Card>
         </main>
