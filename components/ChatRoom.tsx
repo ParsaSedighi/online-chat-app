@@ -2,18 +2,18 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Group, Message, User } from '@/app/generated/prisma'
+import type { Group, Message, User } from '@/app/generated/prisma';
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import Link from 'next/link';
-import { Settings } from 'lucide-react';
+import { authClient } from '@/lib/auth-client';
+import { cn } from '@/lib/utils';
 
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem } from './ui/form';
-import { SendHorizonal } from 'lucide-react';
+import { SendHorizonal, Settings } from 'lucide-react';
+import Link from 'next/link';
 
 // A message type that includes the author object
 type MessageWithAuthor = Message & { author: User };
@@ -28,6 +28,9 @@ const formSchema = z.object({
 });
 
 export function ChatRoom({ group, initialMessages }: ChatRoomProps) {
+    // --- NEW: Get the current user's session ---
+    const { data: session } = authClient.useSession();
+
     const [socket, setSocket] = useState<Socket | null>(null);
     const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,12 +40,10 @@ export function ChatRoom({ group, initialMessages }: ChatRoomProps) {
         defaultValues: { content: "" },
     });
 
-    // Effect to scroll to the bottom of the chat
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Effect to initialize and clean up socket connection
     useEffect(() => {
         const newSocket = io({
             path: '/api/socket.io',
@@ -86,19 +87,45 @@ export function ChatRoom({ group, initialMessages }: ChatRoomProps) {
             </header>
 
             <main className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => (
-                    <div key={message.id} className="flex items-start gap-3">
-                        <div className="flex flex-col">
-                            <span className="font-bold">{message.author.name}</span>
-                            <div className="p-3 rounded-lg bg-muted">
-                                <p>{message.content}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(message.createdAt).toLocaleTimeString()}
-                                </p>
+                {messages.map((message) => {
+                    // --- NEW: Check if the message is from the current user ---
+                    const isOwnMessage = message.authorId === session?.user?.id;
+
+                    return (
+                        <div
+                            key={message.id}
+                            // --- NEW: Conditionally align the entire message container ---
+                            className={cn("flex items-end gap-3", {
+                                "justify-end": isOwnMessage,
+                                "justify-start": !isOwnMessage,
+                            })}
+                        >
+                            <div className="flex flex-col">
+                                {/* --- NEW: Only show author's name if it's not your own message --- */}
+                                {!isOwnMessage && (
+                                    <span className="text-sm text-muted-foreground ml-3 mb-1">
+                                        {message.author.name}
+                                    </span>
+                                )}
+                                <div
+                                    // --- NEW: Conditionally change the color of the message bubble ---
+                                    className={cn("p-3 rounded-lg max-w-xs md:max-w-md", {
+                                        "bg-primary text-primary-foreground": isOwnMessage,
+                                        "bg-muted": !isOwnMessage,
+                                    })}
+                                >
+                                    <p className="text-sm">{message.content}</p>
+                                    <p className={cn("text-xs mt-1", {
+                                        "text-primary-foreground/70": isOwnMessage,
+                                        "text-muted-foreground": !isOwnMessage,
+                                    })}>
+                                        {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 <div ref={messagesEndRef} />
             </main>
 
