@@ -1,5 +1,18 @@
 'use client';
 
+import { Trash2 } from "lucide-react"; // Import trash icon
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 import { useEffect, useState, useCallback } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { UserWithRole } from "better-auth/plugins";
@@ -28,6 +41,21 @@ export default function AdminUsersPage() {
 
     // State for the "Create User" dialog
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+
+    const handleDeleteUser = async (userId: string) => {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+        });
+
+        if (response.ok) {
+            console.log("User deleted successfully.");
+            fetchUsers(); // Refresh the list
+        } else {
+            const data = await response.json();
+            console.log(`Failed to delete user: ${data.error}`);
+        }
+    };
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -161,9 +189,32 @@ export default function AdminUsersPage() {
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell>{user.role}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="outline" size="icon" onClick={() => handleEditClick(user)}>
+                                        <Button variant="outline" size="icon" className="mr-2" onClick={() => handleEditClick(user)}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>
+
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" size="icon">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete the user
+                                                        and all their associated data.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                                        Continue
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
